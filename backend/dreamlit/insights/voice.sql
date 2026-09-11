@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS insight_voice (
+ id TEXT PRIMARY KEY,
+ audio_id TEXT NOT NULL REFERENCES audio(id) ON DELETE CASCADE,
+ text TEXT NOT NULL DEFAULT '',
+ created_at TEXT NOT NULL
+);

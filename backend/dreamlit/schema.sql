@@ -1,0 +1,35 @@
+CREATE TABLE IF NOT EXISTS dreams (id TEXT PRIMARY KEY, current_revision INTEGER NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS dream_revisions (
+ dream_id TEXT NOT NULL REFERENCES dreams(id) ON DELETE CASCADE,
+ revision INTEGER NOT NULL, dreamed_on TEXT NOT NULL, text TEXT NOT NULL,
+ context TEXT NOT NULL, audio_id TEXT, created_at TEXT NOT NULL,
+ PRIMARY KEY(dream_id, revision));
+CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS audio (id TEXT PRIMARY KEY, filename TEXT NOT NULL, mime_type TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS jobs (
+ id TEXT PRIMARY KEY, kind TEXT NOT NULL, provider TEXT, state TEXT NOT NULL,
+ stage TEXT NOT NULL, payload TEXT NOT NULL, error_code TEXT, result_id TEXT, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS analyses (
+ id TEXT PRIMARY KEY, job_id TEXT NOT NULL, provider TEXT NOT NULL, model TEXT,
+ source_revisions TEXT NOT NULL, scope TEXT NOT NULL, output TEXT NOT NULL,
+ stale INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS analysis_sources (
+ analysis_id TEXT NOT NULL REFERENCES analyses(id) ON DELETE CASCADE,
+ dream_id TEXT NOT NULL REFERENCES dreams(id) ON DELETE CASCADE, revision INTEGER NOT NULL,
+ PRIMARY KEY (analysis_id, dream_id));
+CREATE TABLE IF NOT EXISTS patterns (
+ id TEXT PRIMARY KEY, analysis_id TEXT NOT NULL REFERENCES analyses(id) ON DELETE CASCADE,
+ output TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS feedback (
+ id TEXT PRIMARY KEY, pattern_id TEXT NOT NULL REFERENCES patterns(id) ON DELETE CASCADE,
+ verdict TEXT NOT NULL, note TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS associations (
+ id TEXT PRIMARY KEY, label TEXT NOT NULL, meaning TEXT NOT NULL,
+ dream_id TEXT REFERENCES dreams(id) ON DELETE CASCADE, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS reflections (
+ id TEXT PRIMARY KEY, pattern_id TEXT NOT NULL REFERENCES patterns(id) ON DELETE CASCADE,
+ provider TEXT NOT NULL, message TEXT NOT NULL, output TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS transcripts (
+ id TEXT PRIMARY KEY, dream_id TEXT NOT NULL REFERENCES dreams(id) ON DELETE CASCADE,
+ source_revision INTEGER NOT NULL, text TEXT NOT NULL, created_at TEXT NOT NULL);
+PRAGMA user_version=1;

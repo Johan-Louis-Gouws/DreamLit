@@ -1,0 +1,63 @@
+# Local agent/editor state
+.agents/
+.codex/
+.claude/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Secrets and machine-local configuration
+.env
+.env.*
+!.env.example
+*.local
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Python environments, caches, and build output
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Frontend dependencies, compiler output, and test artifacts
+node_modules/
+*.tsbuildinfo
+test-results/
+playwright-report/
+
+# DreamLit runtime, private journals, exports, and local models
+.dreamlit/
+data/
+exports/
+models/
+voicenotes/
+*.sqlite*
+*.zip
+*.wav
+*.webm
+*.mp3
+*.m4a
+*.ogg
+*.flac
+*.mp4
+*.mov
+*.gguf
+*.bin
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*~

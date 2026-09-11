@@ -1,0 +1,7 @@
+[
+ {"synthetic":true,"entries":["The phone would not dial.","Everyone talked over me at dinner.","On stage, no sound came out."],"candidate":"Attempts to communicate repeatedly fail.","question":"Where, if anywhere, do you feel unheard while awake?"},
+ {"synthetic":true,"entries":["I happily sailed a boat.","I painted a boat on a wall."],"candidate":null,"reason":"A shared object does not establish a shared emotional situation."},
+ {"synthetic":true,"entries":["I could not get through to anyone.","My friend listened and helped."],"candidate":null,"reason":"The second entry contradicts a universal claim of being unheard."},
+ {"synthetic":true,"entries":["Blue room."],"candidate":null,"reason":"Insufficient context for a recurring pattern."},
+ {"synthetic":true,"entries":["I was lost and asked a stranger for directions.","My sister helped me find the exit."],"candidate":"Receiving help when disoriented.","question":"Who do you turn to when you need direction?"}
+]
