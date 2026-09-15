@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { X, ArrowUpRight, Send } from "lucide-react";
 import { api, json } from "../../api";
 import type { Pattern, Job, Provider } from "../../types";
+import { ContextSources } from "../insights/shared";
 import { JobProgress } from "../../JobProgress";
 
 export function ReflectionPanel({
@@ -23,6 +24,8 @@ export function ReflectionPanel({
     [job, setJob] = useState<Job | null>(null),
     [error, setError] = useState(""),
     [feedback, setFeedback] = useState("");
+  const [savedReplies, setSavedReplies] = useState<string[]>([]);
+  const [savingReply, setSavingReply] = useState<string | null>(null);
   const load = () => api<Pattern>(`/patterns/${id}`).then(setPattern);
   useEffect(() => {
     load().catch((e) => setError(String(e)));
@@ -172,12 +175,56 @@ export function ReflectionPanel({
               )}
             </div>
             <div className="conversation">
-              {pattern.reflections?.map((turn) => (
+              {pattern.reflections?.map((turn, index) => (
                 <div key={turn.id}>
                   <div className="user-turn">{turn.message}</div>
+                  {savedReplies.includes(turn.id) ? (
+                    <small role="status">Saved to Your World</small>
+                  ) : (
+                    <button
+                      className="text-button"
+                      disabled={savingReply === turn.id}
+                      onClick={async () => {
+                        setSavingReply(turn.id);
+                        setError("");
+                        try {
+                          await api(
+                            "/insights/records",
+                            json("POST", {
+                              kind: "answer",
+                              data: {
+                                question:
+                                  index === 0
+                                    ? pattern.question
+                                    : pattern.reflections![index - 1].output
+                                        .response,
+                                answer: turn.message,
+                                topic: pattern.title,
+                                scope: "current",
+                                status: "current",
+                              },
+                            }),
+                          );
+                          setSavedReplies((items) => [...items, turn.id]);
+                        } catch (e) {
+                          setError(String(e));
+                        } finally {
+                          setSavingReply(null);
+                        }
+                      }}
+                    >
+                      Save reply as context
+                    </button>
+                  )}
                   <div className="assistant-turn">
                     <span className="eyebrow">{turn.provider} REFLECTION</span>
                     <p>{turn.output.response}</p>
+                    {turn.stale && (
+                      <p className="stale-note">
+                        A source changed. This reflection uses earlier context.
+                      </p>
+                    )}
+                    <ContextSources sources={turn.personal_context_sources} />
                   </div>
                 </div>
               ))}

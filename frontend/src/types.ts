@@ -40,6 +40,8 @@ export interface Pattern {
     id: string;
     provider: Provider;
     message: string;
+    stale?: boolean;
+    personal_context_sources?: PersonalContextSource[];
     output: { response: string; evidence: Evidence[] };
   }[];
 }
@@ -63,6 +65,77 @@ export interface Analysis {
     total_eligible_dreams: number;
     truncated: boolean;
   };
+  personal_context_sources?: PersonalContextSource[];
+}
+
+export type RecordKind = "answer" | "person" | "investigation" | "experiment";
+export type RunKind =
+  "question" | "turning_points" | "investigation" | "portrait" | "weekly";
+
+export interface InsightRecord<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> {
+  id: string;
+  kind: RecordKind;
+  revision: number;
+  data: T;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PersonalContextSource {
+  kind: RecordKind;
+  id: string;
+  revision: number;
+  label: string;
+}
+
+export interface InsightSource {
+  kind: "dream" | RecordKind;
+  id: string;
+  revision: number;
+  date: string;
+  label: string;
+  fields: Record<string, string>;
+}
+
+export interface InsightEvidence {
+  source_kind: InsightSource["kind"];
+  source_id: string;
+  revision: number;
+  field: string;
+  quote: string;
+}
+
+export interface InsightOutput {
+  title: string;
+  summary: string;
+  sections: {
+    heading: string;
+    body: string;
+    evidence: InsightEvidence[];
+    counterevidence: InsightEvidence[];
+  }[];
+  question: string;
+}
+
+export interface InsightRun {
+  id: string;
+  kind: RunKind;
+  subject_id: string | null;
+  provider: Provider;
+  model: string | null;
+  output: InsightOutput;
+  sources: InsightSource[];
+  scope: {
+    included_dream_ids: string[];
+    total_eligible_dreams: number;
+    truncated: boolean;
+    date_from: string | null;
+    date_to: string | null;
+  };
+  stale: boolean;
+  created_at: string;
 }
 export interface Preferences {
   provider: Provider;

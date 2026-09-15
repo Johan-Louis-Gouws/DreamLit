@@ -42,9 +42,7 @@ class Store:
                 row["name"] for row in db.execute("PRAGMA table_info(reflections)")
             }
             if "stale" not in reflection_columns:
-                db.execute(
-                    "ALTER TABLE reflections ADD COLUMN stale INTEGER NOT NULL DEFAULT 0"
-                )
+                db.execute("ALTER TABLE reflections ADD COLUMN stale INTEGER NOT NULL DEFAULT 0")
 
     @contextmanager
     def connect(self):
@@ -232,9 +230,9 @@ class Store:
                 "UPDATE jobs SET state='failed',error_code='interrupted',stage='Interrupted; retry available' WHERE state IN ('running','queued')"
             )
 
-    def save_analysis(
-        self, job_id, provider, model, sources, scope, output, personal_context=None
-    ):
+    def save_analysis(self, job_id, provider, model, sources, scope, output, personal_context=None):
+        from .insights.store import InsightStore
+
         analysis_id = uid()
         revisions = {d.id: d.revision for d in sources}
         personal_context = personal_context or []
@@ -249,6 +247,7 @@ class Store:
                     raise Conflict("A source dream was deleted during analysis.")
                 stale |= row[0] != revision
             for source in personal_context:
+                InsightStore.require_eligible_source(db, source)
                 row = db.execute(
                     "SELECT kind,current_revision FROM insight_records WHERE id=?",
                     (source["id"],),
@@ -355,7 +354,10 @@ class Store:
                 "SELECT * FROM reflections WHERE pattern_id=? ORDER BY created_at",
                 (pattern_id,),
             ):
-                reflection = {**dict(reflection_row), "output": json.loads(reflection_row["output"])}
+                reflection = {
+                    **dict(reflection_row),
+                    "output": json.loads(reflection_row["output"]),
+                }
                 reflection["stale"] = bool(reflection["stale"])
                 reflection["personal_context_sources"] = [
                     {
@@ -375,15 +377,16 @@ class Store:
         result["feedback"] = self.list_feedback(pattern_id)
         return result
 
-    def save_reflection(
-        self, pattern_id, provider, message, output, personal_context=None
-    ):
+    def save_reflection(self, pattern_id, provider, message, output, personal_context=None):
+        from .insights.store import InsightStore
+
         reflection_id = uid()
         personal_context = personal_context or []
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             stale = False
             for source in personal_context:
+                InsightStore.require_eligible_source(db, source)
                 row = db.execute(
                     "SELECT kind,current_revision FROM insight_records WHERE id=?",
                     (source["id"],),

@@ -1,7 +1,7 @@
 import json
 
 import pytest
-from dreamlit.models import ContextSnapshot
+from dreamlit.models import AnalysisOutput, ContextSnapshot, DreamCreate, Scope
 from dreamlit.providers.base import ProviderError
 from test_api import client as client
 from test_api import finish, save
@@ -223,3 +223,118 @@ def test_existing_scan_includes_personal_context(client):
     job = client.post("/api/scan", json={"provider": "codex"}).json()
     assert finish(client, job["id"])["state"] == "completed"
     assert all(r.payload["personal_context"] for r in requests if r.task in ("extract", "connect"))
+
+
+def test_person_exclusion_invalidates_an_indirect_answer_dependency(client):
+    from dreamlit.insights.store import InsightStore
+    from dreamlit.storage import Conflict
+
+    person = record(client, "person", name="Ann", notes="long notes " * 900)
+    answer = record(
+        client, "answer", question="Who was there?", answer="My sister", person_id=person["id"]
+    )
+    store = InsightStore(client.app.state.store)
+    selected = [s for s in store.sources() if s["id"] == answer["id"]]
+    output = {
+        "title": "A question",
+        "summary": "",
+        "sections": [],
+        "question": "What felt familiar?",
+    }
+    scope = {
+        "included_dream_ids": [],
+        "total_eligible_dreams": 0,
+        "truncated": True,
+        "date_from": None,
+        "date_to": None,
+    }
+    run = store.save_run("question", None, "codex", "fixture", output, selected, scope)
+    store.update_record(person["id"], 1, {**person["data"], "include_in_analysis": False})
+    assert store.get_run(run["id"])["stale"]
+    with pytest.raises(Conflict):
+        store.save_run("question", None, "codex", "fixture", output, selected, scope)
+    dream = client.app.state.store.create_dream(
+        DreamCreate(dreamed_on="2026-09-09", text="My sister was there.")
+    )
+    with pytest.raises(Conflict):
+        client.app.state.store.save_analysis(
+            "job",
+            "codex",
+            "fixture",
+            [dream],
+            Scope(included_dream_ids=[dream.id], total_eligible_dreams=1, truncated=False),
+            AnalysisOutput(summary="", observations=[], patterns=[]),
+            personal_context=selected,
+        )
+
+
+def test_explicit_investigation_dream_survives_source_budget(client):
+    from dreamlit.insights.sources import all_sources, select_sources
+
+    pinned = client.post(
+        "/api/dreams", json={"dreamed_on": "2025-01-01", "text": "An earlier dream. " + "x" * 19000}
+    ).json()
+    for day in ("01", "02", "03"):
+        client.post(
+            "/api/dreams",
+            json={"dreamed_on": "2026-09-" + day, "text": "Recent dream. " + "x" * 19000},
+        )
+    inquiry = record(
+        client, "investigation", question="What has changed?", dream_ids=[pinned["id"]]
+    )
+    selected, scope = select_sources(
+        all_sources(client.app.state.store), "investigation", inquiry["id"]
+    )
+    assert pinned["id"] in [s["id"] for s in selected]
+    assert scope["truncated"]
+
+
+def test_portrait_uses_user_identification_of_an_unnamed_dream_character(client):
+    person = record(client, "person", name="Ann")
+    dream = save(client, "My sister met me at the gate.")
+    record(
+        client,
+        "answer",
+        question="Who was your sister?",
+        answer="Ann",
+        person_id=person["id"],
+        dream_id=dream["id"],
+    )
+    run = generate(client, "portrait", subject_id=person["id"])
+    assert dream["id"] in run["scope"]["included_dream_ids"]
+
+
+def test_portrait_budget_keeps_character_identification_with_each_unnamed_dream(client):
+    from dreamlit.insights.sources import all_sources, select_sources
+    from dreamlit.insights.store import InsightStore
+    from dreamlit.storage import Conflict
+
+    person = record(client, "person", name="Ann")
+    links = {}
+    for day in ("08", "09", "10"):
+        dream = client.post(
+            "/api/dreams",
+            json={"dreamed_on": "2026-09-" + day, "text": "My sister met me. " + "x" * 19000},
+        ).json()
+        answer = record(
+            client,
+            "answer",
+            question="Who was there?",
+            answer="My sister was Ann. " + "x" * 9500,
+            person_id=person["id"],
+            dream_id=dream["id"],
+        )
+        links[dream["id"]] = answer
+    selected, scope = select_sources(all_sources(client.app.state.store), "portrait", person["id"])
+    selected_ids = {s["id"] for s in selected}
+    assert scope["included_dream_ids"]
+    assert all(links[dream_id]["id"] in selected_ids for dream_id in scope["included_dream_ids"])
+    assert len(json.dumps(selected, ensure_ascii=False)) <= 60000
+    store = InsightStore(client.app.state.store)
+    output = {"title": "Portrait", "summary": "", "sections": [], "question": "What felt familiar?"}
+    run = store.save_run("portrait", person["id"], "codex", "fixture", output, selected, scope)
+    answer = links[scope["included_dream_ids"][0]]
+    store.update_record(answer["id"], 1, {**answer["data"], "status": "excluded"})
+    assert store.get_run(run["id"])["stale"]
+    with pytest.raises(Conflict):
+        store.save_run("portrait", person["id"], "codex", "fixture", output, selected, scope)

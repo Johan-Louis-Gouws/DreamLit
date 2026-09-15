@@ -45,6 +45,10 @@ def test_cancellation_stops_child_process_group(tmp_path):
         with pytest.raises(asyncio.CancelledError):
             await task
         stat = Path(f"/proc/{child}/stat")
-        assert not stat.exists() or stat.read_text().split()[2] == "Z"
+        try:
+            state = stat.read_text().split()[2]
+        except FileNotFoundError:
+            state = None  # A reaped child can disappear between existence and read.
+        assert state in (None, "Z")
 
     asyncio.run(scenario())

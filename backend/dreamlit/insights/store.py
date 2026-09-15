@@ -44,9 +44,10 @@ class InsightStore:
                 InsightStore._require_kind(db, data["person_id"], "person")
             if data["dream_id"]:
                 InsightStore._require_dream(db, data["dream_id"])
-            if data["audio_id"] and not db.execute(
-                "SELECT 1 FROM audio WHERE id=?", (data["audio_id"],)
-            ).fetchone():
+            if (
+                data["audio_id"]
+                and not db.execute("SELECT 1 FROM audio WHERE id=?", (data["audio_id"],)).fetchone()
+            ):
                 raise ValueError("Linked audio recording was not found.")
         elif kind == "investigation":
             for dream_id in data["dream_ids"]:
@@ -91,6 +92,19 @@ class InsightStore:
             (revision, row["id"]),
         )
         InsightStore._invalidate(db, row["kind"], row["id"])
+        if row["kind"] == "person":
+            # Inclusion is also a dependency of linked context, even when the
+            # person's full source was too large to fit the retrieval budget.
+            linked = db.execute(
+                """SELECT r.id,r.kind FROM insight_records r
+                JOIN insight_record_revisions v
+                ON v.record_id=r.id AND v.revision=r.current_revision
+                WHERE r.kind IN ('answer','experiment')
+                AND json_extract(v.data,'$.person_id')=?""",
+                (row["id"],),
+            ).fetchall()
+            for item in linked:
+                InsightStore._invalidate(db, item["kind"], item["id"])
 
     def create_record(self, kind, data):
         validated = validate_record_data(kind, data)
@@ -242,14 +256,33 @@ class InsightStore:
         eligible = []
         for item in records:
             data = item["data"]
-            if item["kind"] == "answer" and (
-                data["status"] != "current" or data.get("person_id") in excluded_people
-            ):
-                continue
-            if item["kind"] == "person" and not data["include_in_analysis"]:
+            if not self._eligible(item["kind"], data, excluded_people):
                 continue
             eligible.append(self._source_for(item))
         return eligible
+
+    @staticmethod
+    def _eligible(kind, data, excluded_people):
+        if kind == "answer" and data["status"] != "current":
+            return False
+        if kind == "person" and not data["include_in_analysis"]:
+            return False
+        return data.get("person_id") not in excluded_people
+
+    @staticmethod
+    def require_eligible_source(db, source):
+        row = InsightStore._current_record(db, source["id"])
+        if row is None:
+            raise Conflict("A personal source was deleted during analysis.")
+        data = json.loads(row["data"])
+        excluded = set()
+        person_id = data.get("person_id")
+        if person_id:
+            person = InsightStore._current_record(db, person_id)
+            if person is None or not json.loads(person["data"])["include_in_analysis"]:
+                excluded.add(person_id)
+        if not InsightStore._eligible(row["kind"], data, excluded):
+            raise Conflict("Personal context was excluded during analysis. Generate again.")
 
     @staticmethod
     def _actual_source(db, source):
@@ -276,6 +309,7 @@ class InsightStore:
             raise Conflict("A personal source was deleted during generation.")
         if row["kind"] != kind or row["revision"] != source.get("revision"):
             raise Conflict("A personal source changed during generation.")
+        InsightStore.require_eligible_source(db, source)
         actual = InsightStore._source_for(InsightStore._decode_record(row))
         if source.get("date") != actual["date"] or source.get("fields") != actual["fields"]:
             raise ValueError("Personal source metadata does not match the selected revision.")

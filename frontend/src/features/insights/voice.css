@@ -1,10 +1,47 @@
-.answer-voice { margin: 12px 0; }
-.answer-voice-content { border-top: 1px solid var(--line, #e3dcd5); margin-top: 12px; padding-top: 16px; }
-.answer-voice-content .button-row { flex-wrap: wrap; gap: 10px; }
-.answer-voice audio { display: block; max-width: 100%; margin: 14px 0; }
-.voice-import { cursor: pointer; position: relative; }
-.voice-import input { position: absolute; width: 100%; height: 100%; inset: 0; opacity: 0; cursor: pointer; }
-.voice-import:focus-within { outline: 2px solid var(--accent, #765364); outline-offset: 4px; }
-.voice-library, .voice-transcript label { display: grid; gap: 8px; margin: 18px 0 12px; }
-.voice-library select, .voice-transcript textarea { width: 100%; min-width: 0; }
-.voice-transcript textarea { min-height: 110px; }
+.answer-voice {
+  margin: 12px 0;
+}
+.answer-voice-content {
+  border-top: 1px solid var(--line, #e3dcd5);
+  margin-top: 12px;
+  padding-top: 16px;
+}
+.answer-voice-content .button-row {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.answer-voice audio {
+  display: block;
+  max-width: 100%;
+  margin: 14px 0;
+}
+.voice-import {
+  cursor: pointer;
+  position: relative;
+}
+.voice-import input {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.voice-import:focus-within {
+  outline: 2px solid var(--accent, #765364);
+  outline-offset: 4px;
+}
+.voice-library,
+.voice-transcript label {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0 12px;
+}
+.voice-library select,
+.voice-transcript textarea {
+  width: 100%;
+  min-width: 0;
+}
+.voice-transcript textarea {
+  min-height: 110px;
+}

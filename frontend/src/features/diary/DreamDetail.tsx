@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { api, json, dateLabel } from "../../api";
 import type { Dream, Analysis, Job, Provider } from "../../types";
+import { ContextSources } from "../insights/shared";
 import { JobProgress } from "../../JobProgress";
 
 export function DreamDetail({
@@ -299,6 +300,7 @@ export function DreamDetail({
                   {latest.scope.truncated ? " · SELECTED HISTORY" : ""}
                 </div>
                 <p>{latest.output.summary}</p>
+                <ContextSources sources={latest.personal_context_sources} />
                 <div className="tags">
                   {latest.output.observations.slice(0, 8).map((o, i) => (
                     <span key={i}>

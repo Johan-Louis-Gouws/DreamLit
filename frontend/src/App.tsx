@@ -6,6 +6,9 @@ import {
   SlidersHorizontal,
   MoonStar,
   ArrowUpRight,
+  Globe,
+  Search,
+  CalendarCheck,
 } from "lucide-react";
 import { api } from "./api";
 import type { Dream, Preferences } from "./types";
@@ -15,6 +18,10 @@ import { DreamDetail } from "./features/diary/DreamDetail";
 import { ConnectionsView } from "./features/connections/ConnectionsView";
 import { ReflectionPanel } from "./features/reflection/ReflectionPanel";
 import { ProviderSettings } from "./features/settings/ProviderSettings";
+import { YourWorld } from "./features/insights/YourWorld";
+import { Explore } from "./features/insights/Explore";
+import { Review } from "./features/insights/Review";
+import "./features/insights/insights.css";
 
 export default function App() {
   const [view, setView] = useState("capture"),
@@ -58,6 +65,9 @@ export default function App() {
     { id: "capture", name: "Capture", icon: Feather },
     { id: "diary", name: "Diary", icon: BookOpen },
     { id: "connections", name: "Connections", icon: Orbit },
+    { id: "world", name: "Your World", icon: Globe },
+    { id: "explore", name: "Explore", icon: Search },
+    { id: "review", name: "Review", icon: CalendarCheck },
   ];
   return (
     <div className="app-shell">
@@ -121,7 +131,13 @@ export default function App() {
                 ? "The stories you brought back"
                 : view === "connections"
                   ? "Your inner landscape"
-                  : "Your space, your way"}
+                  : view === "world"
+                    ? "Your words beside your dreams"
+                    : view === "explore"
+                      ? "Follow what changes"
+                      : view === "review"
+                        ? "A gentle look back"
+                        : "Your space, your way"}
           </span>
           <button onClick={() => setView("settings")}>
             <span className="online-dot" />
@@ -156,6 +172,25 @@ export default function App() {
               onPattern={openPattern}
               refresh={refresh}
             />
+          )}
+          {view === "world" && (
+            <YourWorld
+              key={refresh}
+              provider={preferences.provider}
+              dreams={dreams}
+              onDream={openDream}
+            />
+          )}
+          {view === "explore" && (
+            <Explore
+              key={refresh}
+              provider={preferences.provider}
+              dreams={dreams}
+              onDream={openDream}
+            />
+          )}
+          {view === "review" && (
+            <Review key={refresh} provider={preferences.provider} onDream={openDream} />
           )}
           {view === "settings" && (
             <ProviderSettings
